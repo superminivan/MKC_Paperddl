@@ -346,12 +346,7 @@ const descriptionHtml = computed(() => {
           <div class="conf-meta-line">
             <span v-if="isTbd">
               {{ deadlineLabel }}:
-              <a
-                href="https://github.com/paperddl/ccf-deadlines/pulls"
-                target="_blank"
-              >
-                提交 PR 更新
-              </a>
+              <span>待定</span>
             </span>
             <span v-else>{{ deadlineLabel }}: {{ deadlineLine }}</span>
           </div>
