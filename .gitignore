@@ -1,0 +1,40 @@
+### Node dependencies
+node_modules/
+
+### Env files (do NOT commit real credentials)
+.env
+.env.*
+.env.local
+.env.*.local
+
+### Build outputs
+dist/
+build/
+.output/
+.nuxt/
+.vite/
+coverage/
+
+### Logs
+logs/
+*.log
+*.pid
+
+### Local databases / dumps
+*.sql
+*.sqlite
+*.sqlite3
+*.db
+
+### OS
+.DS_Store
+Thumbs.db
+
+### IDE
+.vscode/
+.idea/
+
+### Misc
+.cache/
+
+# Note: `conference/` is intended to be committed (deadline data).
