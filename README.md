@@ -71,6 +71,7 @@ FLUSH PRIVILEGES;
 
 ```powershell
 Get-Content server/migrations/001_auth.sql | mysql -u paperddl -p paperddl
+Get-Content server/migrations/002_favorites.sql | mysql -u paperddl -p paperddl
 ```
 
 或者在你的 MySQL 客户端中直接执行 `server/migrations/001_auth.sql` 的内容。

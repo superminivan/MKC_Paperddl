@@ -1,8 +1,13 @@
-<script setup lang="ts">
+﻿<script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { fetchCategories, fetchConferences } from "./services/api";
 import { currentUser, loadCurrentUser, logout } from "./services/auth";
+import {
+  addFavorite,
+  fetchFavoriteIds,
+  removeFavorite
+} from "./services/favorites";
 import type { Category, Conference, ConferenceQuery } from "./types/conference";
 import ConferenceCard from "./components/ConferenceCard.vue";
 
@@ -55,6 +60,17 @@ const coreRank = ref<RankValue>("any");
 const thcplRank = ref<Exclude<RankValue, "A*">>("any");
 const yearsSelected = ref<number[]>([]);
 const userMenuOpen = ref(false);
+const favoriteIds = ref<Set<string>>(new Set());
+const showFavoritesOnly = ref(false);
+const pendingFavoriteIds = ref<Set<string>>(new Set());
+const favoritesMenuLabel = computed(() =>
+  showFavoritesOnly.value ? "全部会议" : "收藏会议"
+);
+const resultsHeading = computed(() =>
+  showFavoritesOnly.value
+    ? `My favorites (${visibleConferences.value.length})`
+    : `Recommended for you (${visibleConferences.value.length})`
+);
 
 const heroTitle = ref("快速找到合适的投稿目标");
 
@@ -73,6 +89,15 @@ function getRank(conf: Conference, system: "ccf" | "core" | "thcpl"): string {
   if (system === "ccf") return (rank as any).ccf || "N";
   if (system === "core") return (rank as any).core || "N";
   return (rank as any).thcpl || (rank as any).thc || "N";
+}
+
+function getConferenceFavoriteId(conf: Conference): string {
+  const anyConf = conf as any;
+  return String(
+    anyConf?.edition?.id ||
+    conf.confs?.[0]?.id ||
+    `${conf.title}-${anyConf?.displayYear || conf.confs?.[0]?.year || ""}`
+  );
 }
 
 const ccfRankOptions = [
@@ -103,6 +128,10 @@ const thcplRankOptions = [
 const visibleConferences = computed(() => {
   const selectedYears = new Set(yearsSelected.value);
   return conferences.value.filter((conf) => {
+    if (showFavoritesOnly.value && !favoriteIds.value.has(getConferenceFavoriteId(conf))) {
+      return false;
+    }
+
     if (selectedYears.size) {
       const anyConf = conf as any;
       const year = Number(anyConf?.displayYear ?? conf.confs?.[0]?.year);
@@ -233,6 +262,76 @@ const loadData = async () => {
   }
 };
 
+async function loadFavorites() {
+  if (!currentUser.value) {
+    favoriteIds.value = new Set();
+    showFavoritesOnly.value = false;
+    pendingFavoriteIds.value = new Set();
+    return;
+  }
+
+  try {
+    const ids = await fetchFavoriteIds();
+    favoriteIds.value = new Set(ids);
+  } catch (error) {
+    console.error("Failed to load favorites:", error);
+  }
+}
+
+async function handleToggleFavorite(conf: Conference) {
+  if (!currentUser.value) {
+    window.alert("请先登录后收藏会议");
+    router.push("/login");
+    return;
+  }
+
+  const conferenceId = getConferenceFavoriteId(conf);
+  if (!conferenceId) return;
+
+  if (pendingFavoriteIds.value.has(conferenceId)) return;
+
+  const nextPending = new Set(pendingFavoriteIds.value);
+  nextPending.add(conferenceId);
+  pendingFavoriteIds.value = nextPending;
+
+  const wasFavorite = favoriteIds.value.has(conferenceId);
+  const nextFavorites = new Set(favoriteIds.value);
+
+  if (wasFavorite) nextFavorites.delete(conferenceId);
+  else nextFavorites.add(conferenceId);
+  favoriteIds.value = nextFavorites;
+
+  try {
+    if (wasFavorite) {
+      await removeFavorite(conferenceId);
+    } else {
+      await addFavorite(conferenceId);
+    }
+  } catch (error) {
+    console.error("Failed to toggle favorite:", error);
+    const rollback = new Set(favoriteIds.value);
+    if (wasFavorite) rollback.add(conferenceId);
+    else rollback.delete(conferenceId);
+    favoriteIds.value = rollback;
+    window.alert("收藏操作失败，请稍后重试");
+  } finally {
+    const finalPending = new Set(pendingFavoriteIds.value);
+    finalPending.delete(conferenceId);
+    pendingFavoriteIds.value = finalPending;
+  }
+}
+
+function toggleFavoritesOnly() {
+  if (!currentUser.value) {
+    window.alert("请先登录后查看收藏会议");
+    router.push("/login");
+    return;
+  }
+
+  showFavoritesOnly.value = !showFavoritesOnly.value;
+  userMenuOpen.value = false;
+}
+
 function handleSearchInput(e: Event) {
   const target = e.target as HTMLInputElement;
   query.value.q = target.value;
@@ -261,11 +360,6 @@ function toggleUserMenu() {
   userMenuOpen.value = !userMenuOpen.value;
 }
 
-function showFavoritesPlaceholder() {
-  userMenuOpen.value = false;
-  window.alert("后续实现");
-}
-
 function handleDocumentClick(event: MouseEvent) {
   const target = event.target as HTMLElement | null;
   if (!target?.closest(".user-menu")) {
@@ -273,11 +367,13 @@ function handleDocumentClick(event: MouseEvent) {
   }
 }
 
-onMounted(() => {
-  loadCurrentUser().catch(() => {
+onMounted(async () => {
+  try {
+    await loadCurrentUser();
+  } catch {
     // Auth state is optional on public pages.
-  });
-  loadData();
+  }
+  await Promise.all([loadData(), loadFavorites()]);
   document.addEventListener("click", handleDocumentClick);
 });
 
@@ -297,6 +393,13 @@ watch(
   visibleConferences,
   () => {
     currentPage.value = 1;
+  }
+);
+
+watch(
+  currentUser,
+  () => {
+    loadFavorites();
   }
 );
 
@@ -329,8 +432,12 @@ watch(
                 <span class="user-menu__caret">{{ userMenuOpen ? "^" : "v" }}</span>
               </button>
               <div v-if="userMenuOpen" class="user-menu__panel">
-                <button class="user-menu__item" type="button" @click="showFavoritesPlaceholder">
-                  收藏会议
+                <button
+                  class="user-menu__item"
+                  type="button"
+                  @click="toggleFavoritesOnly"
+                >
+                  {{ favoritesMenuLabel }}
                 </button>
                 <button class="user-menu__item" type="button" @click="handleLogout">
                   退出登录
@@ -427,8 +534,10 @@ watch(
             <div class="results-panel__header">
               <div>
                 <p class="results-panel__caption">为你推荐</p>
-                <h2 class="results-panel__title">
-                  为你推荐（{{ visibleConferences.length }}）
+                <h2
+                  class="results-panel__title"
+                >
+                  {{ resultsHeading }}
                 </h2>
               </div>
             </div>
@@ -443,6 +552,9 @@ watch(
                 :key="`${conf.title}-${(conf as any).displayYear || conf.confs?.[0]?.year || ''}`"
                 :conference="conf"
                 :highlight="query.q || ''"
+                :is-favorite="favoriteIds.has(getConferenceFavoriteId(conf))"
+                :favorite-pending="pendingFavoriteIds.has(getConferenceFavoriteId(conf))"
+                @toggle-favorite="handleToggleFavorite"
               />
             </div>
             <div v-if="visibleConferences.length > 0" class="pagination-summary">
@@ -568,3 +680,4 @@ watch(
     opacity: 0.45;
   }
 </style>
+

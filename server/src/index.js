@@ -26,6 +26,11 @@ import {
   verifyPassword,
   createUser
 } from "./userRepository.js";
+import {
+  listFavoriteIds,
+  addFavorite,
+  removeFavorite
+} from "./favoriteRepository.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -135,6 +140,56 @@ app.post("/api/auth/logout", (_req, res) => {
 
 app.get("/api/auth/me", authenticate, (req, res) => {
   res.json({ user: req.user });
+});
+
+app.get("/api/favorites", authenticate, async (req, res) => {
+  try {
+    const favoriteIds = await listFavoriteIds(req.user.id);
+    res.json({ favoriteIds });
+  } catch (error) {
+    res.status(500).json({
+      message: "Failed to load favorites",
+      error: error instanceof Error ? error.message : String(error)
+    });
+  }
+});
+
+app.post("/api/favorites", authenticate, async (req, res) => {
+  try {
+    const conferenceId =
+      typeof req.body?.conferenceId === "string" ? req.body.conferenceId.trim() : "";
+
+    if (!conferenceId) {
+      return res.status(400).json({ message: "conferenceId is required" });
+    }
+
+    await addFavorite(req.user.id, conferenceId);
+    res.status(201).json({ ok: true, conferenceId });
+  } catch (error) {
+    res.status(500).json({
+      message: "Failed to add favorite",
+      error: error instanceof Error ? error.message : String(error)
+    });
+  }
+});
+
+app.delete("/api/favorites/:conferenceId", authenticate, async (req, res) => {
+  try {
+    const conferenceId =
+      typeof req.params?.conferenceId === "string" ? req.params.conferenceId.trim() : "";
+
+    if (!conferenceId) {
+      return res.status(400).json({ message: "conferenceId is required" });
+    }
+
+    await removeFavorite(req.user.id, conferenceId);
+    res.json({ ok: true, conferenceId });
+  } catch (error) {
+    res.status(500).json({
+      message: "Failed to remove favorite",
+      error: error instanceof Error ? error.message : String(error)
+    });
+  }
 });
 
 app.get("/api/categories", async (_req, res) => {

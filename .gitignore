@@ -25,6 +25,8 @@ logs/
 *.sqlite
 *.sqlite3
 *.db
+!server/migrations/
+!server/migrations/*.sql
 
 ### OS
 .DS_Store
