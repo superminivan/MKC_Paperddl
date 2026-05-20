@@ -9,12 +9,20 @@ const props = withDefaults(
     conference: Conference;
     highlight?: string;
     deadlineMode?: DeadlineMode;
+    isFavorite?: boolean;
+    favoritePending?: boolean;
   }>(),
   {
     highlight: "",
-    deadlineMode: "full"
+    deadlineMode: "full",
+    isFavorite: false,
+    favoritePending: false
   }
 );
+
+const emit = defineEmits<{
+  (e: "toggle-favorite", conference: Conference): void;
+}>();
 
 const now = ref(Date.now());
 let timer: number;
@@ -273,6 +281,10 @@ const titleHtml = computed(() => {
 const descriptionHtml = computed(() => {
   return highlightText(props.conference.description || "", props.highlight || "");
 });
+
+function handleFavoriteClick() {
+  emit("toggle-favorite", props.conference);
+}
 </script>
 
 <template>
@@ -284,7 +296,7 @@ const descriptionHtml = computed(() => {
     <div class="conf-cell">
       <div class="thaw-table-cell-layout">
         <div :class="['conf-content', { 'conf-fin': isExpired }]">
-          <div class="conf-title">
+          <div class="conf-title-row"><div class="conf-title">
             <a
               v-if="currentEdition?.link"
               :href="currentEdition.link"
@@ -309,6 +321,19 @@ const descriptionHtml = computed(() => {
                 &rarr;
               </button>
             </span>
+          </div>
+            <button
+              class="favorite-btn"
+              :class="{ 'favorite-btn--active': isFavorite }"
+              type="button"
+              :disabled="favoritePending"
+              :aria-pressed="isFavorite"
+              :title="isFavorite ? '取消收藏' : '收藏会议'"
+              @click.stop="handleFavoriteClick"
+            >
+              <span aria-hidden="true">{{ isFavorite ? "★" : "☆" }}</span>
+              <span class="favorite-btn__text">{{ isFavorite ? "已收藏" : "收藏" }}</span>
+            </button>
           </div>
 
           <div class="conf-meta-line" v-if="currentEdition?.date || currentEdition?.place">
@@ -445,6 +470,13 @@ const descriptionHtml = computed(() => {
   letter-spacing: 0.2px;
 }
 
+.conf-title-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
 .conf-title a {
   text-decoration: none;
   color: var(--color-primary);
@@ -452,6 +484,43 @@ const descriptionHtml = computed(() => {
 
 .conf-title a:hover {
   text-decoration: underline;
+}
+
+.favorite-btn {
+  flex: 0 0 auto;
+  border: 1px solid rgba(148, 163, 184, 0.45);
+  border-radius: 999px;
+  background: #ffffff;
+  color: #64748b;
+  padding: 4px 10px;
+  font-size: 13px;
+  line-height: 1.4;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  transition: all 0.18s ease;
+}
+
+.favorite-btn:hover:not(:disabled) {
+  border-color: #f59e0b;
+  color: #b45309;
+  box-shadow: 0 6px 16px rgba(245, 158, 11, 0.15);
+}
+
+.favorite-btn--active {
+  border-color: #f59e0b;
+  background: #fffbeb;
+  color: #b45309;
+}
+
+.favorite-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.favorite-btn__text {
+  white-space: nowrap;
 }
 
 .edition-nav {
