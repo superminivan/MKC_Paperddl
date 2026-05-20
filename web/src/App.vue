@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, ref, watch } from "vue";
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { fetchCategories, fetchConferences } from "./services/api";
 import { currentUser, loadCurrentUser, logout } from "./services/auth";
@@ -26,9 +26,18 @@ function goHome() {
   router.push("/");
 }
 
+const searchPanelRef = ref<HTMLElement | null>(null);
+
 function scrollToTop() {
+  if (!searchPanelRef.value) return;
+
+  const top =
+    searchPanelRef.value.getBoundingClientRect().top +
+    window.scrollY -
+    70;
+
   window.scrollTo({
-    top: 0,
+    top,
     behavior: "smooth"
   });
 }
@@ -118,6 +127,50 @@ const visibleConferences = computed(() => {
     return true;
   });
 });
+
+const pageSize = 15;
+const currentPage = ref(1);
+
+const totalPages = computed(() => {
+  return Math.max(1, Math.ceil(visibleConferences.value.length / pageSize));
+});
+
+const paginatedConferences = computed(() => {
+  const start = (currentPage.value - 1) * pageSize;
+  return visibleConferences.value.slice(start, start + pageSize);
+});
+
+const paginationStart = computed(() => {
+  if (visibleConferences.value.length === 0) return 0;
+  return (currentPage.value - 1) * pageSize + 1;
+});
+
+const paginationEnd = computed(() => {
+  return Math.min(currentPage.value * pageSize, visibleConferences.value.length);
+});
+
+const pageNumbers = computed(() => {
+  const total = totalPages.value;
+  const current = currentPage.value;
+  const delta = 2;
+
+  const start = Math.max(1, current - delta);
+  const end = Math.min(total, current + delta);
+
+  return Array.from({ length: end - start + 1 }, (_, index) => start + index);
+});
+
+function goToPage(page: number) {
+  const nextPage = Math.min(Math.max(page, 1), totalPages.value);
+
+  if (nextPage === currentPage.value) return;
+
+  currentPage.value = nextPage;
+
+  nextTick(() => {
+    scrollToTop();
+  });
+}
 
 const loadData = async () => {
   loading.value = true;
@@ -239,7 +292,16 @@ watch(
   },
   { deep: true }
 );
+
+watch(
+  visibleConferences,
+  () => {
+    currentPage.value = 1;
+  }
+);
+
 </script>
+
 
 <template>
   <div class="app-shell">
@@ -258,7 +320,7 @@ watch(
               type="button"
               @click="goLogin"
             >
-              &#30331;&#24405;
+              登录
             </button>
 
             <div v-else class="user-menu">
@@ -268,10 +330,10 @@ watch(
               </button>
               <div v-if="userMenuOpen" class="user-menu__panel">
                 <button class="user-menu__item" type="button" @click="showFavoritesPlaceholder">
-                  &#25910;&#34255;&#20250;&#35758;
+                  收藏会议
                 </button>
                 <button class="user-menu__item" type="button" @click="handleLogout">
-                  &#36864;&#20986;&#30331;&#24405;
+                  退出登录
                 </button>
               </div>
             </div>
@@ -287,30 +349,30 @@ watch(
           </div>
         </section>
 
-        <section class="search-panel">
+        <section ref="searchPanelRef" class="search-panel">
           <form class="search-panel__form" @submit.prevent="handleSearchSubmit">
             <input
               class="search-panel__input"
               type="text"
               :value="query.q"
-              placeholder="&#25628;&#32034;&#20250;&#35758;&#21517;&#31216;&#12289;&#31616;&#31216;&#25110;&#20851;&#38190;&#35789;"
+              placeholder="搜索会议名称、简称或关键词"
               @input="handleSearchInput"
             />
-            <button class="search-panel__button" type="submit">&#25628;&#32034;</button>
+            <button class="search-panel__button" type="submit">搜索</button>
           </form>
         </section>
 
         <section class="content-layout">
           <aside class="filter-sidebar">
             <div class="filter-sidebar__header">
-              <h2>&#31579;&#36873;&#26465;&#20214;</h2>
+              <h2>筛选条件</h2>
               <button class="filter-clear-btn" type="button" @click="clearFilters">
-                &#28165;&#38500;
+                清除
               </button>
             </div>
 
             <div class="filter-group">
-              <div class="filter-group__title">&#30740;&#31350;&#26041;&#21521;</div>
+              <div class="filter-group__title">研究方向</div>
               <div class="chip-list">
                 <label v-for="cat in categories" :key="cat.sub" class="chip-check">
                   <input v-model="query.sub" type="checkbox" :value="cat.sub" />
@@ -320,7 +382,7 @@ watch(
             </div>
 
             <div v-if="availableYears.length" class="filter-group">
-              <div class="filter-group__title">&#24180;&#20221;</div>
+              <div class="filter-group__title">年份</div>
               <div class="chip-list chip-list--compact">
                 <label v-for="y in availableYears" :key="y" class="chip-check">
                   <input
@@ -364,25 +426,59 @@ watch(
           <section class="results-panel">
             <div class="results-panel__header">
               <div>
-                <p class="results-panel__caption">&#20026;&#20320;&#25512;&#33616;</p>
+                <p class="results-panel__caption">为你推荐</p>
                 <h2 class="results-panel__title">
-                  &#20026;&#20320;&#25512;&#33616;&#65288;{{ visibleConferences.length }}&#65289;
+                  为你推荐（{{ visibleConferences.length }}）
                 </h2>
               </div>
             </div>
 
-            <div v-if="loading" class="state-panel">&#21152;&#36733;&#20013;...</div>
+            <div v-if="loading" class="state-panel">加载中...</div>
             <div v-else-if="visibleConferences.length === 0" class="state-panel">
-              &#26410;&#25214;&#21040;&#30456;&#20851;&#20250;&#35758;&#12290;&#35831;&#23581;&#35797;&#35843;&#25972;&#31579;&#36873;&#26465;&#20214;&#25110;&#25628;&#32034;&#20851;&#38190;&#35789;&#12290;
+              未找到相关会议。请尝试调整筛选条件或搜索关键词。;
             </div>
             <div v-else class="conference-list">
               <ConferenceCard
-                v-for="conf in visibleConferences"
+                v-for="conf in paginatedConferences"
                 :key="`${conf.title}-${(conf as any).displayYear || conf.confs?.[0]?.year || ''}`"
                 :conference="conf"
                 :highlight="query.q || ''"
               />
             </div>
+            <div v-if="visibleConferences.length > 0" class="pagination-summary">
+              当前显示 {{ paginationStart }}-{{ paginationEnd }} 条，共 {{ visibleConferences.length }} 条
+            </div>
+
+            <nav v-if="totalPages > 1" class="pagination" aria-label="会议列表分页">
+              <button
+                class="pagination__btn"
+                type="button"
+                :disabled="currentPage === 1"
+                @click="goToPage(currentPage - 1)"
+              >
+                上一页
+              </button>
+
+              <button
+                v-for="page in pageNumbers"
+                :key="page"
+                class="pagination__btn"
+                :class="{ 'pagination__btn--active': page === currentPage }"
+                type="button"
+                @click="goToPage(page)"
+              >
+                {{ page }}
+              </button>
+
+              <button
+                class="pagination__btn"
+                type="button"
+                :disabled="currentPage === totalPages"
+                @click="goToPage(currentPage + 1)"
+              >
+                下一页
+              </button>
+            </nav>
           </section>
         </section>
       </main>
@@ -424,3 +520,51 @@ watch(
     </RouterView>
   </div>
 </template>
+
+<style lang="css">
+  .pagination-summary {
+    margin-top: 18px;
+    text-align: center;
+    font-size: 14px;
+    color: #64748b;
+  }
+
+  .pagination {
+    margin-top: 14px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+
+  .pagination__btn {
+    min-width: 38px;
+    height: 36px;
+    padding: 0 12px;
+    border: 1px solid rgba(203, 213, 225, 0.9);
+    border-radius: 999px;
+    background: #ffffff;
+    color: #334155;
+    font-size: 14px;
+    cursor: pointer;
+    transition: all 0.18s ease;
+  }
+
+  .pagination__btn:hover:not(:disabled) {
+    border-color: #2563eb;
+    color: #2563eb;
+    box-shadow: 0 6px 16px rgba(37, 99, 235, 0.12);
+  }
+
+  .pagination__btn--active {
+    border-color: #2563eb;
+    background: #2563eb;
+    color: #ffffff;
+  }
+
+  .pagination__btn:disabled {
+    cursor: not-allowed;
+    opacity: 0.45;
+  }
+</style>
