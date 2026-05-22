@@ -1,0 +1,53 @@
+services:
+  db:
+    image: mysql:8.0
+    command: --default-authentication-plugin=mysql_native_password
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-paperddl_root_pw}
+      MYSQL_DATABASE: ${MYSQL_DATABASE:-paperddl}
+    volumes:
+      - dbdata:/var/lib/mysql
+      - ./server/migrations:/docker-entrypoint-initdb.d:ro
+    ports:
+      - "3306:3306"
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "-p${MYSQL_ROOT_PASSWORD:-paperddl_root_pw}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  server:
+    build:
+      context: .
+      dockerfile: server/Dockerfile
+    env_file:
+      - ./server/.env
+    environment:
+      PORT: 5000
+      MYSQL_HOST: db
+      MYSQL_PORT: 3306
+      MYSQL_DATABASE: ${MYSQL_DATABASE:-paperddl}
+      MYSQL_USER: root
+      MYSQL_PASSWORD: ${MYSQL_ROOT_PASSWORD:-paperddl_root_pw}
+      # For cookie-based auth behind HTTP (dev). In production with HTTPS, set COOKIE_SECURE=true.
+      COOKIE_SECURE: "false"
+      # Allow frontend container origin if you ever hit API directly (normally proxied via nginx).
+      CORS_ORIGIN: http://localhost
+    depends_on:
+      db:
+        condition: service_healthy
+    ports:
+      - "5000:5000"
+
+  web:
+    build:
+      context: .
+      dockerfile: web/Dockerfile
+    depends_on:
+      - server
+    ports:
+      - "80:80"
+
+volumes:
+  dbdata:
+
