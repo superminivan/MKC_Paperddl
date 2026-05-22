@@ -33,6 +33,33 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
+/*
+  Paper-cool pages were ported from the legacy project (`ccfddl-vue3`).
+  The new site theme uses strong gradients and global element defaults
+  which can visually affect these pages. We isolate minimal base styles
+  under `body.paper-cool-mode` to match the legacy look.
+*/
+body.paper-cool-mode {
+  background: var(--bg-main);
+  background-color: var(--bg-main);
+  font-family: "PingFang SC", "Microsoft YaHei", "Roboto", "Helvetica Neue", Helvetica, Arial, sans-serif;
+  color: #1e293b;
+}
+
+body.paper-cool-mode a {
+  color: inherit;
+}
+
+body.paper-cool-mode button,
+body.paper-cool-mode input,
+body.paper-cool-mode select {
+  font: inherit;
+}
+
+body.paper-cool-mode button {
+  cursor: pointer;
+}
+
 button,
 input,
 select {

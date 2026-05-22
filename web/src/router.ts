@@ -21,7 +21,10 @@ const router = createRouter({
       name: "admin",
       component: AdminPage,
       meta: { requiresAuth: true, requiresAdmin: true }
-    }
+    },
+    { path: "/paper-cool", name: "VenueAll", component: () => import("./pages/paper-cool/VenueAll.vue") },
+    { path: "/paper-cool/:venue", name: "track", component: () => import("./pages/paper-cool/track.vue") },
+    { path: "/paper-cool/:venue/:year/:track", name: "detail", component: () => import("./pages/paper-cool/detail.vue") }
   ]
 });
 

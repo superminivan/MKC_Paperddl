@@ -31,6 +31,10 @@ function goHome() {
   router.push("/");
 }
 
+function goPaperCool() {
+  router.push("/paper-cool");
+}
+
 const searchPanelRef = ref<HTMLElement | null>(null);
 
 function scrollToTop() {
@@ -417,6 +421,10 @@ watch(
           </button>
 
           <div class="top-nav__actions">
+            <button class="nav-ghost-btn" type="button" @click="goPaperCool">
+              论文库
+            </button>
+
             <button
               v-if="!currentUser"
               class="nav-ghost-btn"

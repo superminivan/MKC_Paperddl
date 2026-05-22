@@ -40,3 +40,9 @@ Thumbs.db
 .cache/
 
 # Note: `conference/` is intended to be committed (deadline data).
+
+# local dataset / generated artifacts
+pre4data/
+
+# keep sample env template tracked
+!server/.env.example

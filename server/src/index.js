@@ -31,6 +31,11 @@ import {
   addFavorite,
   removeFavorite
 } from "./favoriteRepository.js";
+import {
+  listPapers,
+  listPaperTracks,
+  listPaperVenues
+} from "./paperRepository.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -187,6 +192,57 @@ app.delete("/api/favorites/:conferenceId", authenticate, async (req, res) => {
   } catch (error) {
     res.status(500).json({
       message: "Failed to remove favorite",
+      error: error instanceof Error ? error.message : String(error)
+    });
+  }
+});
+
+app.get("/api/papers/venues", async (_req, res) => {
+  try {
+    const venues = await listPaperVenues();
+    res.json(venues);
+  } catch (error) {
+    res.status(500).json({
+      message: "Failed to load paper venues",
+      error: error instanceof Error ? error.message : String(error)
+    });
+  }
+});
+
+app.get("/api/papers/tracks", async (req, res) => {
+  try {
+    const conference = typeof req.query.conference === "string"
+      ? req.query.conference.trim()
+      : "";
+
+    if (!conference) {
+      return res.status(400).json({ message: "conference is required" });
+    }
+
+    const tracks = await listPaperTracks(conference);
+    res.json(tracks);
+  } catch (error) {
+    res.status(500).json({
+      message: "Failed to load paper tracks",
+      error: error instanceof Error ? error.message : String(error)
+    });
+  }
+});
+
+app.get("/api/papers", async (req, res) => {
+  try {
+    const result = await listPapers({
+      q: typeof req.query.q === "string" ? req.query.q.trim() : "",
+      conference: typeof req.query.conference === "string" ? req.query.conference.trim() : "",
+      year: typeof req.query.year === "string" ? req.query.year.trim() : "",
+      track: typeof req.query.track === "string" ? req.query.track.trim() : "",
+      limit: typeof req.query.limit === "string" ? req.query.limit : "",
+      offset: typeof req.query.offset === "string" ? req.query.offset : ""
+    });
+    res.json(result);
+  } catch (error) {
+    res.status(500).json({
+      message: "Failed to load papers",
       error: error instanceof Error ? error.message : String(error)
     });
   }

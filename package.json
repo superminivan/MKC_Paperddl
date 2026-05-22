@@ -13,6 +13,7 @@
 		"web:preview": "npm --prefix web run preview",
 		"server:dev": "npm --prefix server run dev",
 		"server:start": "npm --prefix server run start",
-		"server:smoke": "npm --prefix server run smoke"
+		"server:smoke": "npm --prefix server run smoke",
+		"papers:import": "npm --prefix server run papers:import"
 	}
 }

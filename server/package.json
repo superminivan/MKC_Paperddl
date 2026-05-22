@@ -7,6 +7,7 @@
 		"dev": "node ./src/index.js",
 		"start": "node ./src/index.js",
 		"smoke": "node ./src/smoke.js",
+		"papers:import": "node ./src/import-papers.js",
 		"auth:create-admin": "node ./src/create-admin.js"
 	},
 	"dependencies": {

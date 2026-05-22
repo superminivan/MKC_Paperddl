@@ -1,4 +1,5 @@
 import type { Category, Conference, ConferenceQuery } from "../types/conference";
+import type { PaperQuery, PaperSearchResult, PaperTrack, PaperVenue } from "../types/paper.ts";
 
 const API_BASE = (import.meta.env.VITE_API_BASE as string) || "/api";
 
@@ -42,5 +43,27 @@ export async function addConference(conferenceData: any): Promise<any> {
   }
   return res.json();
 
+}
+
+export async function fetchPaperVenues(): Promise<PaperVenue[]> {
+  return getJson<PaperVenue[]>(`${API_BASE}/papers/venues`);
+}
+
+export async function fetchPaperTracks(conference: string): Promise<PaperTrack[]> {
+  const params = new URLSearchParams({ conference });
+  return getJson<PaperTrack[]>(`${API_BASE}/papers/tracks?${params.toString()}`);
+}
+
+export async function fetchPapers(query: PaperQuery): Promise<PaperSearchResult> {
+  const params = new URLSearchParams();
+  if (query.q) params.set("q", query.q);
+  if (query.conference) params.set("conference", query.conference);
+  if (query.year) params.set("year", String(query.year));
+  if (query.track) params.set("track", query.track);
+  if (query.limit) params.set("limit", String(query.limit));
+  if (query.offset) params.set("offset", String(query.offset));
+
+  const suffix = params.toString() ? `?${params.toString()}` : "";
+  return getJson<PaperSearchResult>(`${API_BASE}/papers${suffix}`);
 }
 
