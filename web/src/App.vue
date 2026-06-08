@@ -215,8 +215,26 @@ const loadData = async () => {
     categories.value = cats;
     const nowMs = Date.now();
     const parseConfDeadline = (conf: Conference) => {
-      const candidate = conf.nextDeadline || conf.confs?.[0]?.timeline?.[0]?.deadline;
+      const edition = conf.confs?.[0];
+      const candidate = conf.nextDeadline || edition?.timeline?.[0]?.deadline;
+      const tz = edition?.timezone || conf.timezone;
       if (!candidate || candidate.toUpperCase() === "TBD") return null;
+
+      const parts = candidate.split(" ");
+      if (parts.length === 2 && tz) {
+        const tzUpper = tz.toUpperCase();
+        let tzOffset = 0;
+        if (tzUpper === "AOE") {
+          tzOffset = -12;
+        } else {
+          const match = tz.match(/UTC([+-]\d+)/i);
+          if (match) tzOffset = parseInt(match[1], 10);
+        }
+        const [datePart, timePart] = parts;
+        const [y, m, d] = datePart.split("-").map(Number);
+        const [hh, mm, ss] = timePart.split(":").map(Number);
+        return Date.UTC(y, m - 1, d, hh - tzOffset, mm, ss);
+      }
       const parsed = Date.parse(candidate.replace(" ", "T"));
       return Number.isNaN(parsed) ? null : parsed;
     };

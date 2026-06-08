@@ -3,7 +3,7 @@
     <header class="pc-top-nav">
       <div class="pc-top-nav__inner">
         <div class="pc-brand">
-          <h2>Papers.Cool</h2>
+          <h2>深知论文</h2>
           <p>会议、年份、track 与论文搜索均来自后端数据库。</p>
         </div>
         <button class="ghost-btn" type="button" @click="$router.push('/')">返回首页</button>
@@ -58,13 +58,13 @@
             <div v-if="searchError" class="hint error">{{ searchError }}</div>
             <div v-else-if="!searchLoading && searchResults.length === 0" class="hint">没有匹配结果。</div>
             <div v-else class="preview-list">
-              <article v-for="paper in searchResults" :key="paper.id" class="preview-item">
-                <button type="button" @click="openPaperContext(paper)">
-                  <strong>{{ paper.title }}</strong>
-                  <span>{{ paper.conference }} {{ paper.year }} 路 {{ paper.track || 'Unknown track' }}</span>
-                  <small>{{ paper.authors.slice(0, 4).join(', ') || 'Unknown authors' }}</small>
-                </button>
-              </article>
+	              <article v-for="paper in searchResults" :key="paper.id" class="preview-item">
+	                <button type="button" @click="openPaperContext(paper)">
+	                  <strong>{{ paper.title }}</strong>
+	                  <span>{{ paper.conference }} {{ paper.year }} · {{ paper.track || 'Unknown track' }}</span>
+	                  <small>{{ paper.authors.slice(0, 4).join(', ') || 'Unknown authors' }}</small>
+	                </button>
+	              </article>
             </div>
           </div>
         </div>
@@ -95,7 +95,7 @@
           <span class="venue-name">{{ venue.conference }}</span>
           <span class="venue-desc">{{ venue.meta?.description || '暂无会议描述' }}</span>
           <span class="venue-stat-line">
-            {{ venue.count.toLocaleString() }} papers 路 {{ venue.yearCount }} years 路 {{ venue.trackCount }} tracks
+            {{ venue.count.toLocaleString() }} papers · {{ venue.yearCount }} years · {{ venue.trackCount }} tracks
           </span>
           <span class="venue-stat-line muted">{{ venue.minYear }}-{{ venue.maxYear }}</span>
           <span v-if="venue.meta?.rank" class="rank-line">
@@ -611,4 +611,3 @@ onBeforeUnmount(() => {
   }
 }
 </style>
-
